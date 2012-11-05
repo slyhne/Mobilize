@@ -2,15 +2,14 @@
 /*
  *
  * Elgg mobilize
+ * Elgg mobile responsive plugin
  *
+ * @package mobilize
  * @author Per Jensen - Elggzone
- * @license http://www.gnu.org/licenses/gpl-2.0.html GNU General Public License v2
- * @copyright Copyright (c) 2012, Per Jensen
+ * @copyright Copyright (c) 2010 - 2012, Per Jensen
  *
- * @link http://www.perjensen-online.dk/
- *
- */
- 
+ */ 
+
 elgg_register_event_handler('init','system','mobilize_init'); 
 
 function mobilize_init(){  
@@ -21,13 +20,27 @@ function mobilize_init(){
 	elgg_register_page_handler('terms', 'mobilize_expages_page_handler');
 	elgg_register_page_handler('privacy', 'mobilize_expages_page_handler');
 	
+	elgg_register_css('elgg.mobilize', elgg_get_site_url() . 'mod/mobilize/css/mobilize.css');
+
+
 	detectmobile();	
 	$mobile = detectmobile();
-	
-	$url = elgg_get_simplecache_url('css', 'mobilize');
-	elgg_register_css('elgg.mobilize', $url);
+
+	if ($mobile) {
+		if ($_SESSION['desktop'] != 'full') {
+			$show_mobile = true;	
+		} else {
+			$show_mobile = false;
+		}
+	} else {
+		if ($_SESSION['desktop'] == 'mobile') {
+			$show_mobile = true;	
+		} else {
+			$show_mobile = false;
+		}
+	}
 		
-	if($mobile == true) {
+	if($show_mobile) {
 	
 		elgg_set_viewtype('mobile');
 		
@@ -47,8 +60,17 @@ function mobilize_init(){
 		elgg_load_js('mobilize');
 
 		elgg_register_event_handler('pagesetup', 'system', 'mobilize_setup_handler', 1000);
+	} else {
+
+		elgg_register_event_handler('pagesetup', 'system', 'mobilize_fullview_setup_handler', 1000);
+
 	}
-	elgg_register_viewtype_fallback('mobile'); 
+
+	elgg_register_viewtype_fallback('mobile');
+
+	// Register public external pages
+	elgg_register_plugin_hook_handler('public_pages', 'walled_garden', 'mobilize_public');
+
 }
 
 function index_handler($hook, $type, $return, $params) {
@@ -168,4 +190,21 @@ function mobilize_setup_handler() {
 			'section' => 'alt',
 		));
 	}
+}
+
+// Extend the public pages range
+function mobilize_public($hook, $handler, $return, $params){
+	$pages = array('mod/mobilize/mobileview.php', 'mod/mobilize/fullview.php');
+	return array_merge($pages, $return);
+}
+
+function mobilize_fullview_setup_handler() {
+
+	$url = elgg_get_site_url() . "mod/mobilize/mobileview.php?cururl={$_SERVER['REQUEST_URI']}"; 	
+	$wg_item = new ElggMenuItem('mobilize', elgg_echo('mobilize:mobile'), $url);
+	elgg_register_menu_item('walled_garden', $wg_item);
+
+	$footer_item = clone $wg_item;
+	elgg_register_menu_item('footer', $footer_item);
+
 }
